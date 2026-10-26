@@ -19,6 +19,13 @@
           <div id="progressFill" class="progress-fill"></div>
         </div>
       </div>
+      <div class="header-tools">
+        <button id="btnSuggestions" type="button" aria-expanded="false" aria-controls="suggestionsDrawer">
+          Suggestions <span id="suggestionCount" class="count-pill" hidden>0</span>
+        </button>
+        <button id="btnSettings" type="button">Settings</button>
+        <button id="btnTips" type="button" class="icon-btn" aria-label="Tuning technique" title="Tuning technique">?</button>
+      </div>
     </header>
 
     <div id="micStatusBanner" class="status-banner" hidden>
@@ -30,10 +37,6 @@
         <div class="panel-title">
           <h2>Piano</h2>
           <span class="meta" id="selectedKeyHint">Click a key to select it · Shift-click marks tuned · Readings save only for the selected key</span>
-        </div>
-        <div class="panel-actions">
-          <button id="btnClearSuggestions" class="worst-action-btn" title="Drop measured suggestions. Keys marked tuned stay.">Clear suggestions</button>
-          <button id="btnClearTuned" class="worst-action-btn" title="Reset every checkmark and measurement">Reset checklist</button>
         </div>
       </div>
 
@@ -52,34 +55,17 @@
       </div>
     </section>
 
-    <div class="staff-priority-grid">
-      <section class="panel">
-        <div class="panel-head">
-          <div class="panel-title">
-            <h2>Staff</h2>
-            <span class="meta">Selected note and the worst untuned readings</span>
-          </div>
+    <section class="panel staff-panel">
+      <div class="panel-head">
+        <div class="panel-title">
+          <h2>Staff</h2>
+          <span class="meta">Selected note</span>
         </div>
-        <div class="staff-canvas-frame">
-          <canvas id="staffCanvas"></canvas>
-        </div>
-      </section>
-
-      <section class="panel">
-        <div class="panel-head">
-          <div class="panel-title">
-            <h2>Suggestions</h2>
-            <span class="meta">Untuned keys with a saved reading</span>
-          </div>
-        </div>
-        <div class="worst-notes-panel">
-          <div id="worstNotesList" class="worst-list">
-            <!-- Dynamically populated cards -->
-            <div class="meta" style="padding: 0.5rem; text-align: center;">Play notes across piano to measure and prioritize.</div>
-          </div>
-        </div>
-      </section>
-    </div>
+      </div>
+      <div class="staff-canvas-frame">
+        <canvas id="staffCanvas"></canvas>
+      </div>
+    </section>
 
     <section class="meter-panel">
       <div class="meter-hero">
@@ -141,73 +127,86 @@
       </div>
     </section>
 
-    <!-- 4. Lower Two-Column Settings & Tips -->
-    <div class="settings-grid">
-      <!-- Temperament & Railsback Curve -->
-      <section class="panel">
-        <div class="panel-head">
-          <div class="panel-title">
-            <h2>Temperament & Inharmonicity</h2>
-          </div>
-        </div>
-
-        <div class="setting-item">
-          <div class="setting-label-row">
-            <span>Temperament Curve:</span>
-          </div>
-          <select id="selectTuningMode" class="clean-select" style="width: 100%;">
-            <option value="pure">Pure Equal Temperament (Default)</option>
-            <option value="stretch">Stretch Tuning (Railsback Upright Curve)</option>
-          </select>
-          <p class="explanation" id="stretchExplanation">
-            <strong>Pure Equal:</strong> Mathematically exact 12-TET frequencies (A4=440).
-          </p>
-        </div>
-
-        <div class="setting-item" id="stretchFactorRow" style="display: none;">
-          <div class="setting-label-row">
-            <span>Stretch Intensity:</span>
-            <span id="valStretchFactor" class="setting-val">1.0x</span>
-          </div>
-          <input id="rangeStretchFactor" type="range" min="0.0" max="2.0" step="0.1" value="1.0" />
-          <p class="explanation">
-            Compensates for string stiffness by flattening bass (down to -28¢) and sharpening treble (up to +32¢).
-          </p>
-        </div>
-
-        <div class="setting-item">
-          <div class="setting-label-row">
-            <span>A4 Reference Pitch:</span>
-            <span id="valA4" class="setting-val">440.0 Hz</span>
-          </div>
-          <input id="rangeA4" type="range" min="435" max="445" step="0.5" value="440.0" />
-        </div>
-
-        <div class="setting-item">
-          <div class="setting-label-row">
-            <span>In-Tune Green Tolerance:</span>
-            <span id="valTolerance" class="setting-val">±5.0 cents</span>
-          </div>
-          <input id="rangeTolerance" type="range" min="2" max="10" step="0.5" value="5.0" />
-        </div>
-      </section>
-
-      <!-- Upright Piano Tuning Practice Guide -->
-      <section class="panel">
-        <div class="panel-head">
-          <div class="panel-title">
-            <h2>Upright Tuning Technique</h2>
-          </div>
-        </div>
-        <ul class="tips-list">
-          <li><strong>Mute unison strings:</strong> Upright notes have 2 or 3 strings. Insert rubber wedges or a felt temper strip so only <em>one string sounds</em> at a time.</li>
-          <li><strong>Prioritize worst notes:</strong> Use the priority list above to identify strings with greatest deviation (>10¢) to balance soundboard tension first.</li>
-          <li><strong>Setting the pin:</strong> Apply firm rotational torque. Slightly loosen sharp strings first, then tune up into pitch with settling torque.</li>
-          <li><strong>Shortcuts:</strong> <kbd>←</kbd> / <kbd>→</kbd> step notes • <kbd>Enter</kbd> marks key as tuned • <kbd>Space</kbd> toggles reference tone.</li>
-        </ul>
-      </section>
-    </div>
   </div>
+
+  <div id="suggestionsScrim" class="scrim" hidden></div>
+  <aside id="suggestionsDrawer" class="suggestions-drawer" aria-hidden="true">
+    <div class="panel-head">
+      <div class="panel-title">
+        <h2>Suggestions</h2>
+        <span class="meta">Untuned keys with a saved reading</span>
+      </div>
+      <button id="btnCloseSuggestions" type="button" class="icon-btn" aria-label="Close suggestions">✕</button>
+    </div>
+    <div id="worstNotesList" class="worst-list"></div>
+    <button id="btnClearSuggestions" type="button" class="worst-action-btn">Clear suggestions</button>
+  </aside>
+
+  <dialog id="settingsDialog" class="app-dialog">
+    <div class="dialog-card">
+      <div class="panel-head">
+        <h2>Settings</h2>
+        <button type="button" class="icon-btn" data-close-dialog aria-label="Close settings">✕</button>
+      </div>
+
+      <div class="setting-item">
+        <div class="setting-label-row">
+          <span>Temperament curve</span>
+        </div>
+        <select id="selectTuningMode" class="clean-select">
+          <option value="pure">Pure Equal Temperament (Default)</option>
+          <option value="stretch">Stretch Tuning (Railsback Upright Curve)</option>
+        </select>
+        <p class="explanation" id="stretchExplanation">
+          <strong>Pure Equal:</strong> Mathematically exact 12-TET frequencies (A4=440).
+        </p>
+      </div>
+
+      <div class="setting-item" id="stretchFactorRow" style="display: none;">
+        <div class="setting-label-row">
+          <span>Stretch intensity</span>
+          <span id="valStretchFactor" class="setting-val">1.0x</span>
+        </div>
+        <input id="rangeStretchFactor" type="range" min="0.0" max="2.0" step="0.1" value="1.0" />
+        <p class="explanation">
+          Compensates for string stiffness by flattening bass (down to -28¢) and sharpening treble (up to +32¢).
+        </p>
+      </div>
+
+      <div class="setting-item">
+        <div class="setting-label-row">
+          <span>A4 reference pitch</span>
+          <span id="valA4" class="setting-val">440.0 Hz</span>
+        </div>
+        <input id="rangeA4" type="range" min="435" max="445" step="0.5" value="440.0" />
+      </div>
+
+      <div class="setting-item">
+        <div class="setting-label-row">
+          <span>In-tune green tolerance</span>
+          <span id="valTolerance" class="setting-val">±5.0 cents</span>
+        </div>
+        <input id="rangeTolerance" type="range" min="2" max="10" step="0.5" value="5.0" />
+      </div>
+
+      <button id="btnClearTuned" type="button" class="worst-action-btn">Reset checklist</button>
+    </div>
+  </dialog>
+
+  <dialog id="tipsDialog" class="app-dialog">
+    <div class="dialog-card dialog-card-wide">
+      <div class="panel-head">
+        <h2>Upright tuning technique</h2>
+        <button type="button" class="icon-btn" data-close-dialog aria-label="Close tuning technique">✕</button>
+      </div>
+      <ul class="tips-list">
+        <li><strong>Mute unison strings:</strong> Upright notes have 2 or 3 strings. Insert rubber wedges or a felt temper strip so only <em>one string sounds</em> at a time.</li>
+        <li><strong>Work the worst notes:</strong> Open Suggestions and start with the largest deviations so the soundboard tension settles more evenly.</li>
+        <li><strong>Setting the pin:</strong> Apply firm rotational torque. Slightly loosen sharp strings first, then tune up into pitch with settling torque.</li>
+        <li><strong>Shortcuts:</strong> <kbd>←</kbd> / <kbd>→</kbd> step notes • <kbd>Enter</kbd> marks the key tuned • <kbd>Space</kbd> toggles the reference tone.</li>
+      </ul>
+    </div>
+  </dialog>
 
   <script type="module" src="./src/main.ts"></script>
 </body>

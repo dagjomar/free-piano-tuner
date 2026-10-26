@@ -85,7 +85,7 @@ export class PianoRoll {
     const rect = this.canvas.getBoundingClientRect();
     const dpr = window.devicePixelRatio || 1;
     const width = Math.max(320, Math.floor(rect.width));
-    const height = Math.max(130, Math.floor(rect.height || 140));
+    const height = Math.max(64, Math.floor(rect.height || 160));
 
     if (this.canvas.width !== width * dpr || this.canvas.height !== height * dpr) {
       this.canvas.width = width * dpr;

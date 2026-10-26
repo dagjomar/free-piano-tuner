@@ -30,6 +30,15 @@ const btnMarkTuned = document.getElementById('btnMarkTuned') as HTMLButtonElemen
 const markTunedText = document.getElementById('markTunedText') as HTMLElement;
 const btnClearTuned = document.getElementById('btnClearTuned') as HTMLButtonElement;
 const btnClearSuggestions = document.getElementById('btnClearSuggestions') as HTMLButtonElement;
+const btnSuggestions = document.getElementById('btnSuggestions') as HTMLButtonElement;
+const btnCloseSuggestions = document.getElementById('btnCloseSuggestions') as HTMLButtonElement;
+const suggestionCountEl = document.getElementById('suggestionCount') as HTMLElement;
+const suggestionsDrawer = document.getElementById('suggestionsDrawer') as HTMLElement;
+const suggestionsScrim = document.getElementById('suggestionsScrim') as HTMLElement;
+const btnSettings = document.getElementById('btnSettings') as HTMLButtonElement;
+const btnTips = document.getElementById('btnTips') as HTMLButtonElement;
+const settingsDialog = document.getElementById('settingsDialog') as HTMLDialogElement;
+const tipsDialog = document.getElementById('tipsDialog') as HTMLDialogElement;
 const btnClearReading = document.getElementById('btnClearReading') as HTMLButtonElement;
 const btnRelisten = document.getElementById('btnRelisten') as HTMLButtonElement;
 const tunedCountText = document.getElementById('tunedCountText') as HTMLElement;
@@ -139,8 +148,20 @@ function updateChecklistUi() {
   tunedCountText.textContent = `${tunedCount} / ${total} keys (${pct}%)`;
   progressFill.style.width = `${pct}%`;
 
+  const suggestionCount = store.getWorstNotes(total, true).length;
+  suggestionCountEl.hidden = suggestionCount === 0;
+  suggestionCountEl.textContent = String(suggestionCount);
+
   updateWorstNotesList();
   updateMarkTunedButton();
+}
+
+function setSuggestionsOpen(open: boolean): void {
+  suggestionsDrawer.classList.toggle('is-open', open);
+  suggestionsDrawer.setAttribute('aria-hidden', open ? 'false' : 'true');
+  suggestionsScrim.hidden = !open;
+  btnSuggestions.setAttribute('aria-expanded', open ? 'true' : 'false');
+  if (open) btnCloseSuggestions.focus();
 }
 
 function updateMarkTunedButton() {
@@ -443,6 +464,23 @@ btnClearTuned.addEventListener('click', () => {
   }
 });
 
+btnSuggestions.addEventListener('click', () => {
+  setSuggestionsOpen(!suggestionsDrawer.classList.contains('is-open'));
+});
+btnCloseSuggestions.addEventListener('click', () => setSuggestionsOpen(false));
+suggestionsScrim.addEventListener('click', () => setSuggestionsOpen(false));
+
+btnSettings.addEventListener('click', () => settingsDialog.showModal());
+btnTips.addEventListener('click', () => tipsDialog.showModal());
+for (const button of document.querySelectorAll<HTMLButtonElement>('[data-close-dialog]')) {
+  button.addEventListener('click', () => button.closest('dialog')?.close());
+}
+for (const dialog of [settingsDialog, tipsDialog]) {
+  dialog.addEventListener('click', (event) => {
+    if (event.target === dialog) dialog.close();
+  });
+}
+
 // Mode buttons
 modeAutoBtn.addEventListener('click', () => {
   engine.setTunerMode('auto');
@@ -504,6 +542,13 @@ rangeTolerance.addEventListener('input', () => {
 
 // Keyboard Navigation
 window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && suggestionsDrawer.classList.contains('is-open')) {
+    if (!settingsDialog.open && !tipsDialog.open) {
+      setSuggestionsOpen(false);
+    }
+    return;
+  }
+
   if (
     document.activeElement instanceof HTMLInputElement ||
     document.activeElement instanceof HTMLSelectElement
