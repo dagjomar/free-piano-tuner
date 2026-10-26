@@ -70,6 +70,32 @@ describe('TuningStore', () => {
     expect(worstUntuned[1].midi).toBe(38);
   });
 
+  it('clears suggestion readings and keeps keys marked tuned', () => {
+    store.recordMeasurement(60, -14.2, 259.48);
+    store.recordMeasurement(69, 1.5, 440.38);
+    store.markTuned(69, true);
+
+    store.clearSuggestions();
+
+    expect(store.isKeyTuned(69)).toBe(true);
+    expect(store.getKeyState(69)?.lastMeasuredCents).toBeCloseTo(1.5, 1);
+    expect(store.getKeyState(60)?.lastMeasuredCents).toBeNull();
+    expect(store.getKeyState(60)?.lastMeasuredFreq).toBeNull();
+    expect(store.getWorstNotes(8, true)).toHaveLength(0);
+  });
+
+  it('clears one key reading without clearing its tuned mark', () => {
+    store.markTuned(60, true);
+    store.recordMeasurement(60, 0.5, 261.6);
+    store.recordMeasurement(69, 3.2, 440.8);
+
+    store.clearMeasurement(60);
+
+    expect(store.isKeyTuned(60)).toBe(true);
+    expect(store.getKeyState(60)?.lastMeasuredCents).toBeNull();
+    expect(store.getKeyState(69)?.lastMeasuredCents).toBeCloseTo(3.2, 1);
+  });
+
   it('clears all measurements and tuned statuses on reset', () => {
     store.markTuned(60, true);
     store.recordMeasurement(60, 0.5, 261.6);

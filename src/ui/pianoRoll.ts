@@ -84,7 +84,7 @@ export class PianoRoll {
   public resize(): void {
     const rect = this.canvas.getBoundingClientRect();
     const dpr = window.devicePixelRatio || 1;
-    const width = Math.max(860, Math.floor(rect.width));
+    const width = Math.max(320, Math.floor(rect.width));
     const height = Math.max(130, Math.floor(rect.height || 140));
 
     if (this.canvas.width !== width * dpr || this.canvas.height !== height * dpr) {
@@ -152,12 +152,13 @@ export class PianoRoll {
       height: this.blackKeyHeight
     });
 
-    // Octaves 1 to 7 (12 notes each)
+    // C1–B7. C1 is MIDI 24. (The previous formula started at C2 and then
+    // parked C8 seven white keys past B7, which left the gap before key 88.)
     const semitoneNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
     const isSemitoneBlack = [false, true, false, true, false, false, true, false, true, false, true, false];
 
     for (let oct = 1; oct <= 7; oct++) {
-      const baseMidi = 12 + (oct + 1) * 12; // C1 is 24
+      const baseMidi = (oct + 1) * 12;
 
       // First pass: white keys in octave
       const octaveWhiteStartIndex = currentWhiteIndex;

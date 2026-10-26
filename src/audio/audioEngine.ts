@@ -274,13 +274,6 @@ export class AudioEngine {
 
       if (this.latestResult) {
         this.state.detectedResult = this.latestResult;
-
-        // In auto-detect mode, update activeTargetFreq and targetMidi to detected note
-        if (this.state.tunerMode === 'auto' && this.latestResult.isNoteDetected) {
-          this.state.targetMidi = this.latestResult.midi;
-          this.updateActiveTargetFreq();
-        }
-
         this.notify();
       }
 

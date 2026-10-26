@@ -95,6 +95,42 @@ export class TuningStore {
     }
   }
 
+  /** Drop one key's saved pitch reading. The tuned mark stays. */
+  public clearMeasurement(midi: number): void {
+    const state = this.keyStates.get(midi);
+    if (!state) return;
+    if (
+      state.lastMeasuredCents === null &&
+      state.lastMeasuredFreq === null &&
+      state.measuredAt === null
+    ) {
+      return;
+    }
+    state.lastMeasuredCents = null;
+    state.lastMeasuredFreq = null;
+    state.measuredAt = null;
+    this.notify();
+  }
+
+  /**
+   * Drop saved pitch readings for keys that are not marked tuned.
+   * Tuned keys keep both their checkmark and their last reading.
+   */
+  public clearSuggestions(): void {
+    let changed = false;
+    for (const state of this.keyStates.values()) {
+      if (state.isTuned) continue;
+      if (state.lastMeasuredCents === null && state.lastMeasuredFreq === null && state.measuredAt === null) {
+        continue;
+      }
+      state.lastMeasuredCents = null;
+      state.lastMeasuredFreq = null;
+      state.measuredAt = null;
+      changed = true;
+    }
+    if (changed) this.notify();
+  }
+
   public getTunedCount(): number {
     let count = 0;
     for (const state of this.keyStates.values()) {

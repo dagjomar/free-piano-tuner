@@ -29,6 +29,9 @@ const toneText = document.getElementById('toneText') as HTMLSpanElement;
 const btnMarkTuned = document.getElementById('btnMarkTuned') as HTMLButtonElement;
 const markTunedText = document.getElementById('markTunedText') as HTMLElement;
 const btnClearTuned = document.getElementById('btnClearTuned') as HTMLButtonElement;
+const btnClearSuggestions = document.getElementById('btnClearSuggestions') as HTMLButtonElement;
+const btnClearReading = document.getElementById('btnClearReading') as HTMLButtonElement;
+const btnRelisten = document.getElementById('btnRelisten') as HTMLButtonElement;
 const tunedCountText = document.getElementById('tunedCountText') as HTMLElement;
 const progressFill = document.getElementById('progressFill') as HTMLElement;
 const hoverKeyInfo = document.getElementById('hoverKeyInfo') as HTMLElement;
@@ -152,8 +155,18 @@ function updateMarkTunedButton() {
   btnMarkTuned.classList.toggle('is-active', isTuned);
 }
 
+let worstListSignature = '\0';
+
 function updateWorstNotesList() {
   const worst = store.getWorstNotes(6, /* onlyUntuned */ true);
+  const currentTargetMidi = engine.getState().targetMidi;
+  const signature = worst
+    .map((item) => `${item.midi}:${item.lastMeasuredCents}:${item.midi === currentTargetMidi ? 1 : 0}`)
+    .join('|');
+  if (signature === worstListSignature && worstNotesList.childElementCount > 0) {
+    return;
+  }
+  worstListSignature = signature;
   worstNotesList.innerHTML = '';
 
   if (worst.length === 0) {
@@ -162,13 +175,11 @@ function updateWorstNotesList() {
     emptyMsg.style.padding = '0.75rem';
     emptyMsg.style.textAlign = 'center';
     emptyMsg.textContent = store.getTunedCount() === 88
-      ? '🎉 All 88 keys tuned!'
-      : 'Play keys across piano to measure and prioritize.';
+      ? 'All 88 keys tuned.'
+      : 'No suggestions. Select a key and listen to save a reading.';
     worstNotesList.appendChild(emptyMsg);
     return;
   }
-
-  const currentTargetMidi = engine.getState().targetMidi;
 
   worst.forEach((item, index) => {
     const card = document.createElement('div');
@@ -211,29 +222,58 @@ function startMeterLoop() {
   function render() {
     const st = engine.getState();
     const res = st.detectedResult;
-    const hasSignal = !!(st.isListening && res && res.isNoteDetected);
-    const cents = hasSignal ? res!.cents : 0;
+    const matchesSelection = !!(
+      st.isListening &&
+      res &&
+      res.isNoteDetected &&
+      res.midi === st.targetMidi
+    );
+    const cents = matchesSelection ? res!.cents : 0;
 
-    dialRenderer.render(cents, st.toleranceCents, hasSignal);
+    dialRenderer.render(cents, st.toleranceCents, matchesSelection);
     requestAnimationFrame(render);
   }
   requestAnimationFrame(render);
 }
 startMeterLoop();
 
+// A saved reading is written only for the selected key, and only after the
+// same pitch has held steady. Passing detections used to stamp other keys.
+const MEASURE_HOLD_MS = 600;
+let heldMidi: number | null = null;
+let heldSince = 0;
+
+function resetMeasureHold(): void {
+  heldMidi = null;
+  heldSince = 0;
+}
+
+function maybeRecordSelectedNote(state: TunerState): void {
+  const res = state.detectedResult;
+  if (!state.isListening || !res?.isNoteDetected || res.midi !== state.targetMidi) {
+    resetMeasureHold();
+    return;
+  }
+  const now = performance.now();
+  if (heldMidi !== res.midi) {
+    heldMidi = res.midi;
+    heldSince = now;
+    return;
+  }
+  if (now - heldSince < MEASURE_HOLD_MS) return;
+  store.recordMeasurement(res.midi, res.cents, res.frequency);
+}
+
 // State subscription and UI updates
 engine.subscribe((state: TunerState) => {
-  // Listen Button
   if (state.isListening) {
     btnListen.classList.add('is-listening');
     listenIcon.textContent = '⏹️';
-    listenText.textContent = 'Stop Listening';
-    micStatusBanner.style.display = 'none';
+    listenText.textContent = 'Stop';
   } else {
     btnListen.classList.remove('is-listening');
     listenIcon.textContent = '🎙️';
-    listenText.textContent = 'Start Listening';
-    micStatusBanner.style.display = 'flex';
+    listenText.textContent = 'Listen';
   }
 
   // Ref Tone Button
@@ -272,35 +312,43 @@ engine.subscribe((state: TunerState) => {
   const isDetected = !!(state.isListening && res && res.isNoteDetected);
 
   if (isDetected && res) {
-    // Record measurement in TuningStore
-    store.recordMeasurement(res.midi, res.cents, res.frequency);
-
-    // Active sounding keys on PianoRoll and Staff
     pianoRoll.setActiveMidi(res.midi);
     staffVisualizer.setActiveMidi(res.midi);
 
-    detectedFreqVal.textContent = res.frequency.toFixed(2);
-    const signPrefix = res.cents > 0 ? '+' : '';
-    centsValueEl.textContent = `${signPrefix}${res.cents.toFixed(1)}`;
+    const matchesSelection = res.midi === state.targetMidi;
+    if (matchesSelection) {
+      maybeRecordSelectedNote(state);
+      detectedFreqVal.textContent = res.frequency.toFixed(2);
+      const signPrefix = res.cents > 0 ? '+' : '';
+      centsValueEl.textContent = `${signPrefix}${res.cents.toFixed(1)}`;
 
-    const absCents = Math.abs(res.cents);
-    const isInTune = absCents <= state.toleranceCents;
+      const absCents = Math.abs(res.cents);
+      const isInTune = absCents <= state.toleranceCents;
 
-    centsValueEl.className = 'cents-display';
-    guidanceBadge.className = 'guidance-tag';
+      centsValueEl.className = 'cents-display';
+      guidanceBadge.className = 'guidance-tag';
 
-    if (isInTune) {
-      centsValueEl.classList.add('in-tune');
-      guidanceBadge.classList.add('in-tune');
-      guidanceBadge.textContent = '✓ IN TUNE';
-    } else if (res.cents < -state.toleranceCents) {
-      centsValueEl.classList.add('negative');
-      guidanceBadge.classList.add('tighten');
-      guidanceBadge.textContent = '▲ TIGHTEN (FLAT)';
+      if (isInTune) {
+        centsValueEl.classList.add('in-tune');
+        guidanceBadge.classList.add('in-tune');
+        guidanceBadge.textContent = '✓ IN TUNE';
+      } else if (res.cents < -state.toleranceCents) {
+        centsValueEl.classList.add('negative');
+        guidanceBadge.classList.add('tighten');
+        guidanceBadge.textContent = '▲ TIGHTEN (FLAT)';
+      } else {
+        centsValueEl.classList.add('positive');
+        guidanceBadge.classList.add('loosen');
+        guidanceBadge.textContent = '▼ LOOSEN (SHARP)';
+      }
     } else {
-      centsValueEl.classList.add('positive');
-      guidanceBadge.classList.add('loosen');
-      guidanceBadge.textContent = '▼ LOOSEN (SHARP)';
+      resetMeasureHold();
+      const heard = getPianoNoteByMidi(res.midi, state.a4Ref);
+      detectedFreqVal.textContent = res.frequency.toFixed(2);
+      centsValueEl.textContent = '--';
+      centsValueEl.className = 'cents-display';
+      guidanceBadge.className = 'guidance-tag';
+      guidanceBadge.textContent = `Hearing ${heard.fullName}`;
     }
   } else {
     pianoRoll.setActiveMidi(null);
@@ -323,21 +371,29 @@ engine.subscribe((state: TunerState) => {
 
 // Event Listeners
 
+function showMicError(message: string): void {
+  micStatusBanner.className = 'status-banner error is-visible';
+  micStatusBanner.hidden = false;
+  bannerText.textContent = message;
+}
+
+async function startListening(): Promise<void> {
+  try {
+    micStatusBanner.hidden = true;
+    micStatusBanner.classList.remove('is-visible');
+    await engine.startListening();
+  } catch (err: unknown) {
+    console.error(err);
+    const errMsg = err instanceof Error ? err.message : String(err);
+    showMicError(`Microphone error: ${errMsg}. Browsers require HTTPS or localhost.`);
+  }
+}
+
 btnListen.addEventListener('click', async () => {
-  const currentState = engine.getState();
-  if (currentState.isListening) {
+  if (engine.getState().isListening) {
     engine.stopListening();
   } else {
-    try {
-      bannerText.textContent = 'Requesting microphone permission...';
-      await engine.startListening();
-    } catch (err: unknown) {
-      console.error(err);
-      micStatusBanner.className = 'status-banner error';
-      micStatusBanner.style.display = 'flex';
-      const errMsg = err instanceof Error ? err.message : String(err);
-      bannerText.innerHTML = `⚠️ <strong>Microphone Error:</strong> ${errMsg}. Modern browsers require HTTPS or localhost.`;
-    }
+    await startListening();
   }
 });
 
@@ -355,9 +411,34 @@ btnMarkTuned.addEventListener('click', () => {
   store.toggleTuned(currentMidi);
 });
 
-// Clear all checklist
+btnClearReading.addEventListener('click', () => {
+  resetMeasureHold();
+  store.clearMeasurement(engine.getState().targetMidi);
+});
+
+btnRelisten.addEventListener('click', async () => {
+  const midi = engine.getState().targetMidi;
+  resetMeasureHold();
+  store.clearMeasurement(midi);
+  engine.setTunerMode('target');
+  engine.setTargetMidi(midi);
+  if (!engine.getState().isListening) {
+    await startListening();
+  }
+});
+
+btnClearSuggestions.addEventListener('click', () => {
+  if (confirm('Clear measured suggestions and keep keys marked tuned?')) {
+    resetMeasureHold();
+    worstListSignature = '\0';
+    store.clearSuggestions();
+  }
+});
+
 btnClearTuned.addEventListener('click', () => {
   if (confirm('Reset all 88 key checkboxes and measurements?')) {
+    resetMeasureHold();
+    worstListSignature = '\0';
     store.clearAll();
   }
 });
