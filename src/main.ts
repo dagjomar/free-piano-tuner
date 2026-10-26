@@ -27,6 +27,7 @@ const toneIcon = document.getElementById('toneIcon') as HTMLSpanElement;
 const toneText = document.getElementById('toneText') as HTMLSpanElement;
 
 const btnMarkTuned = document.getElementById('btnMarkTuned') as HTMLButtonElement;
+const markTunedText = document.getElementById('markTunedText') as HTMLElement;
 const btnClearTuned = document.getElementById('btnClearTuned') as HTMLButtonElement;
 const tunedCountText = document.getElementById('tunedCountText') as HTMLElement;
 const progressFill = document.getElementById('progressFill') as HTMLElement;
@@ -142,13 +143,13 @@ function updateChecklistUi() {
 function updateMarkTunedButton() {
   const currentMidi = engine.getState().targetMidi;
   const isTuned = store.isKeyTuned(currentMidi);
-  if (isTuned) {
-    btnMarkTuned.classList.add('is-active');
-    btnMarkTuned.innerHTML = `<span>✓</span> <span>Tuned (OK)</span>`;
-  } else {
-    btnMarkTuned.classList.remove('is-active');
-    btnMarkTuned.innerHTML = `<span>✓</span> <span>Mark Tuned</span>`;
+  const label = isTuned ? 'Tuned (OK)' : 'Mark Tuned';
+  // The tuner publishes state on every animation frame. Rewriting innerHTML
+  // each time destroys the node under the pointer, so the click never completes.
+  if (markTunedText.textContent !== label) {
+    markTunedText.textContent = label;
   }
+  btnMarkTuned.classList.toggle('is-active', isTuned);
 }
 
 function updateWorstNotesList() {
