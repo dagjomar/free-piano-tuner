@@ -1,4 +1,4 @@
-# 🎹 Piano Tuner — Upright Piano Pitch Tuner
+# 🎹 Free Piano Tuner — Upright Piano Pitch Tuner
 
 A high-accuracy, static, no-backend Web Audio application designed for tuning upright pianos using a Mac's built-in microphone or external USB interface. It runs completely client-side in modern browsers (Safari, Chrome, Firefox) and is deployable to GitHub Pages.
 
@@ -87,7 +87,7 @@ Requirements: Node.js 18+ and npm.
 ```bash
 # Clone the repository
 git clone <repo-url>
-cd piano-tuner
+cd free-piano-tuner
 
 # Install dependencies
 npm install
@@ -120,4 +120,4 @@ A GitHub Actions workflow is provided at `.github/workflows/deploy.yml`.
 1. Push this repository to GitHub on branch `main`.
 2. In your GitHub repository, navigate to **Settings** → **Pages**.
 3. Under **Build and deployment** → **Source**, select **GitHub Actions**.
-4. Pushing to `main` will automatically build the static assets and deploy the app to `https://<your-username>.github.io/<repo-name>/`.
+4. Pushing to `main` will automatically build the static assets and deploy the app to `https://<your-username>.github.io/free-piano-tuner/`.

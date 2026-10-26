@@ -1,5 +1,5 @@
 {
-  "name": "piano-tuner",
+  "name": "free-piano-tuner",
   "version": "1.0.0",
   "description": "High-accuracy upright piano tuner web app with mic pitch detection, stretch tuning, and target mode",
   "type": "module",
