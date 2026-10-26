@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Piano Tuner — Upright Piano Pitch Tuner</title>
+  <link rel="stylesheet" href="./src/ui/style.css" />
+</head>
+<body>
+  <div class="app">
+    <!-- Plugin Header Bar -->
+    <header class="top-bar">
+      <div class="brand">
+        <span class="brand-icon">🎹</span>
+        <div>
+          <h1>Piano Tuner</h1>
+        </div>
+        <span class="badge">Audio Plugin Engine</span>
+      </div>
+
+      <div class="header-actions">
+        <button id="btnTone" title="Play reference tone for ear-checking (Space)">
+          <span id="toneIcon">🔊</span>
+          <span id="toneText">Ref Tone</span>
+        </button>
+        <button id="btnMarkTuned" title="Check off current key as tuned (Enter)">
+          <span>✓</span>
+          <span id="markTunedText">Mark Tuned</span>
+        </button>
+        <button id="btnListen" class="primary">
+          <span id="listenIcon">🎙️</span>
+          <span id="listenText">Start Listening</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- HTTPS & Mic permission banner -->
+    <div id="micStatusBanner" class="status-banner">
+      <span>ℹ️</span>
+      <span id="bannerText">Click <strong>Start Listening</strong> to tune. Microphone access requires HTTPS or localhost in modern browsers.</span>
+    </div>
+
+    <!-- 1. PRIMARY UI: 88-Key Wide Piano Roll -->
+    <section class="panel">
+      <div class="panel-head">
+        <div class="panel-title">
+          <h2>Piano Roll & Tuning Checklist</h2>
+          <span class="meta">88-key physical piano view (A0 to C8)</span>
+        </div>
+        <div class="panel-actions">
+          <button id="btnClearTuned" class="worst-action-btn" title="Reset all checked keys">Reset Checklist</button>
+        </div>
+      </div>
+
+      <div class="piano-roll-container">
+        <!-- Progress bar across 88 keys -->
+        <div class="piano-progress-bar-wrap">
+          <div class="progress-text">
+            Tuned: <strong id="tunedCountText">0 / 88 keys (0%)</strong>
+          </div>
+          <div class="progress-track">
+            <div id="progressFill" class="progress-fill"></div>
+          </div>
+          <div class="meta" id="selectedKeyHint">Click any key to target • Shift-click to mark tuned</div>
+        </div>
+
+        <!-- 88-Key Wide Piano Canvas -->
+        <div class="piano-canvas-frame">
+          <canvas id="pianoRollCanvas"></canvas>
+        </div>
+
+        <div class="keyboard-legend">
+          <div class="legend-items">
+            <span class="legend-chip"><span class="chip-dot green"></span> Tuned (✓)</span>
+            <span class="legend-chip"><span class="chip-dot gold"></span> Sounding Key</span>
+            <span class="legend-chip"><span class="chip-dot warn"></span> Measured Flat</span>
+            <span class="legend-chip"><span class="chip-dot blue"></span> Measured Sharp</span>
+          </div>
+          <span id="hoverKeyInfo">Hover or click keys to inspect</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. Musical Staff & Worst Notes Priority Inspector -->
+    <div class="staff-priority-grid">
+      <!-- Musical Grand Staff Canvas -->
+      <section class="panel">
+        <div class="panel-head">
+          <div class="panel-title">
+            <h2>Musical Staff Position</h2>
+            <span class="meta">Treble & Bass clefs with problem note markers</span>
+          </div>
+        </div>
+        <div class="staff-canvas-frame">
+          <canvas id="staffCanvas"></canvas>
+        </div>
+      </section>
+
+      <!-- Worst Out-of-Tune Notes Priority Deck -->
+      <section class="panel">
+        <div class="panel-head">
+          <div class="panel-title">
+            <h2>Tuning Priorities</h2>
+            <span class="meta">Worst out-of-tune notes</span>
+          </div>
+        </div>
+        <div class="worst-notes-panel">
+          <div id="worstNotesList" class="worst-list">
+            <!-- Dynamically populated cards -->
+            <div class="meta" style="padding: 0.5rem; text-align: center;">Play notes across piano to measure and prioritize.</div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- 3. Fine Tuner Meter & Cents Visualizer -->
+    <section class="meter-panel">
+      <!-- Big Note Hero -->
+      <div class="meter-hero">
+        <div class="hero-left">
+          <div id="noteName" class="note-big">A</div>
+          <div id="noteOctave" class="note-octave">4</div>
+          <div id="noteAlt" class="note-alt"></div>
+        </div>
+
+        <div class="hero-right">
+          <div id="guidanceBadge" class="guidance-tag">Waiting for note...</div>
+          <div class="target-hz-text">
+            Target: <span id="targetFreqVal">440.00</span> Hz
+          </div>
+        </div>
+      </div>
+
+      <!-- Cents Dial Meter -->
+      <div class="dial-frame">
+        <canvas id="tunerDialCanvas"></canvas>
+      </div>
+
+      <!-- Readouts -->
+      <div class="meter-readouts">
+        <div class="cents-display">
+          <span id="centsValue">0.0</span>
+          <span class="cents-unit">cents</span>
+        </div>
+        <div class="hz-display">
+          <span id="detectedFreqVal">--</span> Hz
+        </div>
+      </div>
+
+      <!-- Target Stepper & Mode Toolbar -->
+      <div class="stepper-bar">
+        <div class="segmented-toggle">
+          <button id="modeAuto" class="is-selected">Auto-Detect</button>
+          <button id="modeTarget">Target-Note Mode</button>
+        </div>
+
+        <div class="step-controls">
+          <button id="btnPrevNote" title="Previous Note (← or ↓)">◀ Prev</button>
+          <select id="selectTargetNote" class="clean-select"></select>
+          <button id="btnNextNote" title="Next Note (→ or ↑)">Next ▶</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. Lower Two-Column Settings & Tips -->
+    <div class="settings-grid">
+      <!-- Temperament & Railsback Curve -->
+      <section class="panel">
+        <div class="panel-head">
+          <div class="panel-title">
+            <h2>Temperament & Inharmonicity</h2>
+          </div>
+        </div>
+
+        <div class="setting-item">
+          <div class="setting-label-row">
+            <span>Temperament Curve:</span>
+          </div>
+          <select id="selectTuningMode" class="clean-select" style="width: 100%;">
+            <option value="pure">Pure Equal Temperament (Default)</option>
+            <option value="stretch">Stretch Tuning (Railsback Upright Curve)</option>
+          </select>
+          <p class="explanation" id="stretchExplanation">
+            <strong>Pure Equal:</strong> Mathematically exact 12-TET frequencies (A4=440).
+          </p>
+        </div>
+
+        <div class="setting-item" id="stretchFactorRow" style="display: none;">
+          <div class="setting-label-row">
+            <span>Stretch Intensity:</span>
+            <span id="valStretchFactor" class="setting-val">1.0x</span>
+          </div>
+          <input id="rangeStretchFactor" type="range" min="0.0" max="2.0" step="0.1" value="1.0" />
+          <p class="explanation">
+            Compensates for string stiffness by flattening bass (down to -28¢) and sharpening treble (up to +32¢).
+          </p>
+        </div>
+
+        <div class="setting-item">
+          <div class="setting-label-row">
+            <span>A4 Reference Pitch:</span>
+            <span id="valA4" class="setting-val">440.0 Hz</span>
+          </div>
+          <input id="rangeA4" type="range" min="435" max="445" step="0.5" value="440.0" />
+        </div>
+
+        <div class="setting-item">
+          <div class="setting-label-row">
+            <span>In-Tune Green Tolerance:</span>
+            <span id="valTolerance" class="setting-val">±5.0 cents</span>
+          </div>
+          <input id="rangeTolerance" type="range" min="2" max="10" step="0.5" value="5.0" />
+        </div>
+      </section>
+
+      <!-- Upright Piano Tuning Practice Guide -->
+      <section class="panel">
+        <div class="panel-head">
+          <div class="panel-title">
+            <h2>Upright Tuning Technique</h2>
+          </div>
+        </div>
+        <ul class="tips-list">
+          <li><strong>Mute unison strings:</strong> Upright notes have 2 or 3 strings. Insert rubber wedges or a felt temper strip so only <em>one string sounds</em> at a time.</li>
+          <li><strong>Prioritize worst notes:</strong> Use the priority list above to identify strings with greatest deviation (>10¢) to balance soundboard tension first.</li>
+          <li><strong>Setting the pin:</strong> Apply firm rotational torque. Slightly loosen sharp strings first, then tune up into pitch with settling torque.</li>
+          <li><strong>Shortcuts:</strong> <kbd>←</kbd> / <kbd>→</kbd> step notes • <kbd>Enter</kbd> marks key as tuned • <kbd>Space</kbd> toggles reference tone.</li>
+        </ul>
+      </section>
+    </div>
+  </div>
+
+  <script type="module" src="./src/main.ts"></script>
+</body>
+</html>
